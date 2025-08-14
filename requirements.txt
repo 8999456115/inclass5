@@ -1,3 +1,10 @@
 fastapi[standard]
 python-dotenv
 paypal-server-sdk==0.6.1
+opentelemetry-api
+opentelemetry-sdk
+opentelemetry-instrumentation-fastapi
+opentelemetry-instrumentation-logging
+opentelemetry-instrumentation-requests
+opentelemetry-exporter-otlp-proto-http
+opentelemetry-semantic-conventions

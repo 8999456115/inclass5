@@ -1,0 +1,80 @@
+version: '3.8'
+
+services:
+  # SigNoz Query Service
+  query-service:
+    image: signoz/query-service:latest
+    ports:
+      - "8080:8080"
+    environment:
+      - SIGNOZ_DB_URL=postgresql://signoz:signoz@postgres:5432/signoz
+      - SIGNOZ_REDIS_URL=redis://redis:6379
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - signoz-network
+
+  # SigNoz Frontend
+  frontend:
+    image: signoz/frontend:latest
+    ports:
+      - "3301:3000"
+    environment:
+      - REACT_APP_API_BASE_URL=http://localhost:8080
+    depends_on:
+      - query-service
+    networks:
+      - signoz-network
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:13
+    environment:
+      - POSTGRES_DB=signoz
+      - POSTGRES_USER=signoz
+      - POSTGRES_PASSWORD=signoz
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - signoz-network
+
+  # Redis Cache
+  redis:
+    image: redis:6-alpine
+    networks:
+      - signoz-network
+
+  # OpenTelemetry Collector
+  otel-collector:
+    image: otel/opentelemetry-collector:latest
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml
+    ports:
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+      - "8888:8888"   # Prometheus metrics
+      - "8889:8889"   # Prometheus metrics (alternative)
+      - "13133:13133" # Health check
+    depends_on:
+      - query-service
+    networks:
+      - signoz-network
+
+  # SigNoz Alert Manager
+  alertmanager:
+    image: signoz/alertmanager:latest
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml
+    networks:
+      - signoz-network
+
+volumes:
+  postgres-data:
+
+networks:
+  signoz-network:
+    driver: bridge
